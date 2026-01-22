@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  # ---------------------------
+  # Apache Ozone (Object Store)
+  # ---------------------------
+  ozone-scm:
+    image: apache/ozone:1.3.0
+    container_name: ozone-scm
+    ports:
+      - 9876:9876
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
+    command: ["ozone", "scm"]
+    networks:
+      - lake-net
+
+  ozone-om:
+    image: apache/ozone:1.3.0
+    container_name: ozone-om
+    ports:
+      - 9874:9874
+      - 9862:9862 # S3 Gateway
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
+      OZONE_OM_NODE_ID: om1
+      OZONE_OM_ADDRESS: ozone-om
+    command: ["ozone", "om"]
+    depends_on:
+      - ozone-scm
+    networks:
+      - lake-net
+
+  ozone-datanode:
+    image: apache/ozone:1.3.0
+    container_name: ozone-datanode
+    links:
+      - ozone-scm
+      - ozone-om
+    environment:
+      OZONE_SCM_IP: ozone-scm
+    command: ["ozone", "datanode"]
+    networks:
+      - lake-net
+
+  # ---------------------------
+  # Hive Metastore (Catalog)
+  # ---------------------------
+  postgres:
+    image: postgres:13
+    container_name: lake-postgres
+    environment:
+      POSTGRES_DB: metastore_db
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: password
+    networks:
+      - lake-net
+
+  hive-metastore:
+    image: apache/hive:3.1.3
+    container_name: hive-metastore
+    depends_on:
+      - postgres
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: "-Xmx1G -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore_db -Djavax.jdo.option.ConnectionUserName=hive -Djavax.jdo.option.ConnectionPassword=password"
+    command: /opt/hive/bin/hive --service metastore
+    ports:
+      - 9083:9083
+    networks:
+      - lake-net
+
+  # ---------------------------
+  # Trino (Query Engine)
+  # ---------------------------
+  trino:
+    image: trinodb/trino:latest
+    container_name: lake-trino
+    ports:
+      - 8080:8080
+    volumes:
+      - ./config/trino/etc:/etc/trino
+    networks:
+      - lake-net
+    depends_on:
+      - hive-metastore
+      - ozone-om
+
+  # ---------------------------
+  # Spark (Processing Engine)
+  # ---------------------------
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - 8081:8080 # Web UI
+      - 7077:7077
+    networks:
+      - lake-net
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - lake-net
+
+  # ---------------------------
+  # Backend API (Control Plane)
+  # ---------------------------
+  lake-api:
+    build: 
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: lake-api
+    ports:
+      - 8000:8000
+    volumes:
+      - ./api:/app
+    depends_on:
+      - spark-master
+      - trino
+      - ozone-om
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - TRINO_HOST=trino
+      - OZONE_S3_ENDPOINT=http://ozone-om:9862
+    networks:
+      - lake-net
+
+networks:
+  lake-net:
+    driver: bridge

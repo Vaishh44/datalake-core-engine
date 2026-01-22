@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-multipart
+pyspark==3.5.0
+trino
+pandas
+requests
+boto3
