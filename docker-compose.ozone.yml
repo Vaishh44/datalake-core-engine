@@ -1,54 +1,22 @@
-version: '3'
+version: "3.8"
+
 services:
-  ozone-scm:
+  ozone:
     image: apache/ozone:1.3.0
-    container_name: ozone-scm
-    environment:
-      OZONE_OM_SERVICE_IDS: ozone1
-    command: [ "ozone", "scm" ]
-    networks:
-      - ozone-net
-
-  ozone-om:
-    image: apache/ozone:1.3.0
-    container_name: ozone-om
+    container_name: ozone
+    command: ozone-runner
     ports:
-      - 9878:9874 # Ozone Manager UI mapped to 9878 as requested
-    environment:
-      OZONE_OM_SERVICE_IDS: ozone1
-      OZONE_OM_NODE_ID: om1
-      OZONE_OM_ADDRESS: ozone-om
-    command: [ "ozone", "om" ]
-    depends_on:
-      - ozone-scm
+      - "9862:9862" # S3 Gateway
+      - "9878:9878" # Ozone Manager UI
+      - "9876:9876" # SCM UI
+    volumes:
+      - ozone-data:/data
     networks:
       - ozone-net
 
-  ozone-datanode:
-    image: apache/ozone:1.3.0
-    container_name: ozone-datanode
-    links:
-      - ozone-scm
-      - ozone-om
-    environment:
-      OZONE_SCM_IP: ozone-scm
-    command: [ "ozone", "datanode" ]
-    networks:
-      - ozone-net
+volumes:
+  ozone-data:
 
-  ozone-s3g:
-    image: apache/ozone:1.3.0
-    container_name: ozone-s3g
-    ports:
-      - 9862:9878 # S3 Gateway mapped to 9862 as requested
-    environment:
-      OZONE_OM_SERVICE_IDS: ozone1
-      OZONE_OM_ADDRESS: ozone-om
-    command: [ "ozone", "s3g" ]
-    depends_on:
-      - ozone-om
-    networks:
-      - ozone-net
 
 networks:
   ozone-net:
