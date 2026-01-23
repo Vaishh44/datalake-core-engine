@@ -1,14 +1,8 @@
-version: '3.8'
-
+version: '3'
 services:
-  # ---------------------------
-  # Apache Ozone (Object Store)
-  # ---------------------------
   ozone-scm:
     image: apache/ozone:1.3.0
     container_name: ozone-scm
-    ports:
-      - 9876:9876 # SCM Web UI
     environment:
       OZONE_OM_SERVICE_IDS: ozone1
     command: [ "ozone", "scm" ]
@@ -19,8 +13,7 @@ services:
     image: apache/ozone:1.3.0
     container_name: ozone-om
     ports:
-      - 9874:9874 # OM Web UI
-      - 9862:9862 # S3 Gateway (Important)
+      - 9878:9874 # Ozone Manager UI mapped to 9878 as requested
     environment:
       OZONE_OM_SERVICE_IDS: ozone1
       OZONE_OM_NODE_ID: om1
@@ -43,6 +36,19 @@ services:
     networks:
       - ozone-net
 
+  ozone-s3g:
+    image: apache/ozone:1.3.0
+    container_name: ozone-s3g
+    ports:
+      - 9862:9878 # S3 Gateway mapped to 9862 as requested
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
+      OZONE_OM_ADDRESS: ozone-om
+    command: [ "ozone", "s3g" ]
+    depends_on:
+      - ozone-om
+    networks:
+      - ozone-net
+
 networks:
   ozone-net:
-    driver: bridge

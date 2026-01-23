@@ -1,98 +1,104 @@
 import boto3
 import os
 import sys
+from botocore.config import Config
 
 # Configuration
-# Note: When running locally, localhost:9862 is the S3 Gateway
-# When running inside Docker Network, it would be ozone-om:9862
-OZONE_ENDPOINT = os.getenv("OZONE_ENDPOINT", "http://localhost:9862")
-ACCESS_KEY = "any"
-SECRET_KEY = "any"
+OZONE_ENDPOINT = "http://localhost:9862"
+ACCESS_KEY = "ozone"  # Default test credentials as requested
+SECRET_KEY = "ozone"
 BUCKET_NAME = "phase1-test"
 FILE_NAME = "ozone_test.txt"
+DOWNLOAD_FILE_NAME = "downloaded_ozone_test.txt"
 
 def main():
-    print(f"--- Phase 1: Ozone Verification ---")
-    print(f"Target: {OZONE_ENDPOINT}")
+    print("--------------------------------------------------")
+    print("   PHASE 1: OZONE STORAGE VERIFICATION START      ")
+    print("--------------------------------------------------")
 
-    # 1. Connect
-    print(f"[1] Connecting to S3 Gateway...")
+    # 1. Initialize S3 Client
+    print(f"[INIT] Connecting to Ozone S3 Gateway at {OZONE_ENDPOINT}...")
     try:
         s3 = boto3.client(
             "s3",
             endpoint_url=OZONE_ENDPOINT,
             aws_access_key_id=ACCESS_KEY,
             aws_secret_access_key=SECRET_KEY,
+            config=Config(signature_version='s3v4'),
             region_name="us-east-1"
         )
     except Exception as e:
-        print(f"FAIL: Could not create boto3 client. {e}")
+        print(f"❌ FAILURE: Connection setup failed. Error: {e}")
         sys.exit(1)
 
     # 2. Create Bucket
-    print(f"[2] Creating bucket '{BUCKET_NAME}'...")
+    print(f"[ACTION] Creating bucket '{BUCKET_NAME}'...")
     try:
         s3.create_bucket(Bucket=BUCKET_NAME)
-        print("    Success.")
+        print("   ✅ Bucket created (or already exists).")
     except Exception as e:
         if "BucketAlreadyOwner" in str(e):
-            print("    Bucket already exists (OK).")
+             print("   ⚠️ Bucket already exists.")
         else:
-            print(f"FAIL: {e}")
-            sys.exit(1)
+             print(f"❌ FAILURE: Create bucket failed. Error: {e}")
+             sys.exit(1)
 
-    # 3. Create Test File
-    print(f"[3] Creating local test file '{FILE_NAME}'...")
-    with open(FILE_NAME, "w") as f:
-        f.write("Hello Apache Ozone! This is Phase 1.")
-    
+    # 3. Create Local File
+    print(f"[ACTION] Creating local test file '{FILE_NAME}'...")
+    try:
+        with open(FILE_NAME, "w") as f:
+            f.write("Apache Ozone Phase 1 Verification Successful!")
+        print("   ✅ Local file created.")
+    except Exception as e:
+        print(f"❌ FAILURE: Local file creation failed. Error: {e}")
+        sys.exit(1)
+
     # 4. Upload File
-    print(f"[4] Uploading '{FILE_NAME}' to Ozone...")
+    print(f"[ACTION] Uploading '{FILE_NAME}' to Ozone...")
     try:
         s3.upload_file(FILE_NAME, BUCKET_NAME, FILE_NAME)
-        print("    Success.")
+        print("   ✅ File uploaded successfully.")
     except Exception as e:
-        print(f"FAIL: Upload failed. {e}")
+        print(f"❌ FAILURE: Upload failed. Error: {e}")
         sys.exit(1)
 
-    # 5. List Objects to Verify
-    print(f"[5] Verifying file exists in bucket...")
+    # 5. Download File
+    print(f"[ACTION] Downloading file to '{DOWNLOAD_FILE_NAME}'...")
     try:
-        response = s3.list_objects_v2(Bucket=BUCKET_NAME)
-        objects = [obj['Key'] for obj in response.get('Contents', [])]
-        if FILE_NAME in objects:
-            print(f"    Success: Found '{FILE_NAME}' in remote bucket.")
-        else:
-            print(f"FAIL: File not listed in bucket. Found: {objects}")
-            sys.exit(1)
+        if os.path.exists(DOWNLOAD_FILE_NAME):
+            os.remove(DOWNLOAD_FILE_NAME)
+        
+        s3.download_file(BUCKET_NAME, FILE_NAME, DOWNLOAD_FILE_NAME)
+        print("   ✅ File downloaded successfully.")
     except Exception as e:
-        print(f"FAIL: List objects failed. {e}")
+        print(f"❌ FAILURE: Download failed. Error: {e}")
         sys.exit(1)
 
-    # 6. Download File
-    print(f"[6] Downloading file back to 'downloaded_{FILE_NAME}'...")
+    # 6. Verify Content
+    print(f"[ACTION] Verifying content match...")
     try:
-        s3.download_file(BUCKET_NAME, FILE_NAME, f"downloaded_{FILE_NAME}")
-        print("    Success.")
+        with open(DOWNLOAD_FILE_NAME, "r") as f:
+            content = f.read()
+            expected = "Apache Ozone Phase 1 Verification Successful!"
+            if content == expected:
+                print(f"   ✅ Content verified: '{content}'")
+            else:
+                print(f"❌ FAILURE: Content mismatch!")
+                print(f"      Expected: '{expected}'")
+                print(f"      Got:      '{content}'")
+                sys.exit(1)
     except Exception as e:
-        print(f"FAIL: Download failed. {e}")
+        print(f"❌ FAILURE: Verification failed. Error: {e}")
         sys.exit(1)
 
-    # 7. Verify Content
-    print(f"[7] Verifying content...")
-    with open(f"downloaded_{FILE_NAME}", "r") as f:
-        content = f.read()
-        if content == "Hello Apache Ozone! This is Phase 1.":
-            print("    Success: Content matches exactly.")
-        else:
-            print(f"FAIL: Content mismatch. Got: '{content}'")
-            sys.exit(1)
+    # Cleanup
+    try:
+        if os.path.exists(FILE_NAME): os.remove(FILE_NAME)
+        if os.path.exists(DOWNLOAD_FILE_NAME): os.remove(DOWNLOAD_FILE_NAME)
+    except:
+        pass
 
-    print("\n✅ PHASE 1 COMPLETE: Ozone is working, S3 Gateway is active, Read/Write is confirmed.")
-    
-    # Cleanup (Optional)
-    # os.remove(FILE_NAME)
-    # os.remove(f"downloaded_{FILE_NAME}")
+    print("\n✅ PHASE 1 COMPLETE: Ozone is working")
 
 if __name__ == "__main__":
     main()
