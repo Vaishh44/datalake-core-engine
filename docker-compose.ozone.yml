@@ -6,6 +6,8 @@ services:
     command: [ "ozone", "scm" ]
     ports:
       - "9876:9876"
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
     networks: [ ozone-net ]
 
   ozone-om:
@@ -14,6 +16,10 @@ services:
     command: [ "ozone", "om" ]
     ports:
       - "9878:9878"
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
+      OZONE_OM_NODE_ID: om1
+      OZONE_OM_ADDRESS: ozone-om
     depends_on: [ ozone-scm ]
     networks: [ ozone-net ]
 
@@ -21,6 +27,8 @@ services:
     image: apache/ozone:1.3.0
     container_name: ozone-datanode
     command: [ "ozone", "datanode" ]
+    environment:
+      OZONE_SCM_IP: ozone-scm
     depends_on: [ ozone-scm ]
     networks: [ ozone-net ]
 
@@ -30,6 +38,9 @@ services:
     command: [ "ozone", "s3g" ]
     ports:
       - "9862:9862"
+    environment:
+      OZONE_OM_SERVICE_IDS: ozone1
+      OZONE_OM_ADDRESS: ozone-om
     depends_on: [ ozone-om ]
     networks: [ ozone-net ]
 
