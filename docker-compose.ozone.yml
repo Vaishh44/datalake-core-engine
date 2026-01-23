@@ -1,22 +1,38 @@
 version: "3.8"
-
 services:
-  ozone:
+  ozone-scm:
     image: apache/ozone:1.3.0
-    container_name: ozone
-    command: ozone-runner
+    container_name: ozone-scm
+    command: [ "ozone", "scm" ]
     ports:
-      - "9862:9862" # S3 Gateway
-      - "9878:9878" # Ozone Manager UI
-      - "9876:9876" # SCM UI
-    volumes:
-      - ozone-data:/data
-    networks:
-      - ozone-net
+      - "9876:9876"
+    networks: [ ozone-net ]
 
-volumes:
-  ozone-data:
+  ozone-om:
+    image: apache/ozone:1.3.0
+    container_name: ozone-om
+    command: [ "ozone", "om" ]
+    ports:
+      - "9878:9878"
+    depends_on: [ ozone-scm ]
+    networks: [ ozone-net ]
 
+  ozone-datanode:
+    image: apache/ozone:1.3.0
+    container_name: ozone-datanode
+    command: [ "ozone", "datanode" ]
+    depends_on: [ ozone-scm ]
+    networks: [ ozone-net ]
+
+  ozone-s3g:
+    image: apache/ozone:1.3.0
+    container_name: ozone-s3g
+    command: [ "ozone", "s3g" ]
+    ports:
+      - "9862:9862"
+    depends_on: [ ozone-om ]
+    networks: [ ozone-net ]
 
 networks:
   ozone-net:
+    driver: bridge

@@ -1,7 +1,7 @@
 # Phase 1 – Apache Ozone Verification
 
 This runbook details the **STRICT** process to verify Apache Ozone setup.
-We use `ozone-runner` to run all services in a single container.
+We use a multi-container setup (SCM, OM, Datanode, S3G) to ensure all services run correctly.
 
 ## Steps
 
@@ -16,15 +16,15 @@ Allow services to fully initialize.
 ```bash
 sleep 60
 ```
-*Check logs if needed:* `docker logs ozone`
+*Check logs if needed:* `docker logs ozone-om`
 
 ### 3. Initialize Ozone (MANDATORY)
 **You MUST perform this step manually.** 
 Ozone S3 Gateway requires a volume layout mapping (s3v) to likely exist.
 
 ```bash
-# Enter the container
-docker exec -it ozone bash
+# Enter the OM container
+docker exec -it ozone-om bash
 
 # Create the specific volume for S3
 ozone sh volume create s3v
