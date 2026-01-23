@@ -1,4 +1,5 @@
 version: "3.8"
+
 services:
   ozone-scm:
     image: apache/ozone:1.3.0
@@ -6,8 +7,17 @@ services:
     command: [ "ozone", "scm" ]
     ports:
       - "9876:9876"
-    # SCM does not need to know its own name via env var in this mode
-    networks: [ ozone-net ]
+    environment:
+      OZONE_METADATA_DIRS: /data/metadata
+      OZONE_SCM_BLOCK_CLIENT_BIND_HOST: 0.0.0.0
+      OZONE_SCM_CLIENT_BIND_HOST: 0.0.0.0
+      OZONE_SCM_DATANODE_BIND_HOST: 0.0.0.0
+      OZONE_SCM_NAMES: ozone-scm
+      OZONE_REPLICATION: 1
+    volumes:
+      - ozone_data:/data
+    networks:
+      - ozone-net
 
   ozone-om:
     image: apache/ozone:1.3.0
@@ -16,20 +26,32 @@ services:
     ports:
       - "9878:9878"
     environment:
+      OZONE_METADATA_DIRS: /data/metadata
       OZONE_SCM_NAMES: ozone-scm
       OZONE_OM_ADDRESS: ozone-om
-    depends_on: [ ozone-scm ]
-    networks: [ ozone-net ]
+      OZONE_REPLICATION: 1
+    volumes:
+      - ozone_data:/data
+    depends_on:
+      - ozone-scm
+    networks:
+      - ozone-net
 
   ozone-datanode:
     image: apache/ozone:1.3.0
     container_name: ozone-datanode
     command: [ "ozone", "datanode" ]
     environment:
+      OZONE_METADATA_DIRS: /data/metadata
       OZONE_SCM_NAMES: ozone-scm
       OZONE_OM_ADDRESS: ozone-om
-    depends_on: [ ozone-scm ]
-    networks: [ ozone-net ]
+      OZONE_REPLICATION: 1
+    volumes:
+      - ozone_data:/data
+    depends_on:
+      - ozone-scm
+    networks:
+      - ozone-net
 
   ozone-s3g:
     image: apache/ozone:1.3.0
@@ -40,8 +62,14 @@ services:
     environment:
       OZONE_SCM_NAMES: ozone-scm
       OZONE_OM_ADDRESS: ozone-om
-    depends_on: [ ozone-om ]
-    networks: [ ozone-net ]
+    depends_on:
+      - ozone-om
+    networks:
+      - ozone-net
+
+volumes:
+  ozone_data:
+
 
 networks:
   ozone-net:
