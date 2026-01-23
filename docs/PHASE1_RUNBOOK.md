@@ -59,3 +59,26 @@ python verify_ozone.py
 You must see the following success message at the end:
 
 > **✅ PHASE 1 COMPLETE: Ozone is working**
+
+---
+
+## 🌐 Troubleshooting: "Localhost" Not Working?
+
+If you are running this on a **Remote Server** (e.g., via Termius, AWS, VPS), clicking `http://localhost:9878` will NOT work because "localhost" refers to **your laptop**, not the server.
+
+### Option A: Use Server API (If Ports Open)
+Replace `localhost` with your server's public IP.
+*   Example: `http://123.45.67.89:9878`
+*   *Note: This requires port 9878 to be allowed in the firewall/security group.*
+
+### Option B: Use SSH Tunneling (Recommended)
+This maps the server's port to your local laptop safely.
+
+**In Termius:**
+1.  Go to **Ports** (or Tunnels).
+2.  Add a **Local Rule**.
+3.  Set **Source** (Local): `9878`
+4.  Set **Destination** (Remote): `localhost:9878`
+5.  Connect.
+
+Now, opening `http://localhost:9878` on your laptop **WILL** show the Ozone UI.
