@@ -6,8 +6,7 @@ services:
     command: [ "ozone", "scm" ]
     ports:
       - "9876:9876"
-    environment:
-      OZONE_OM_SERVICE_IDS: ozone1
+    # SCM does not need to know its own name via env var in this mode
     networks: [ ozone-net ]
 
   ozone-om:
@@ -17,8 +16,7 @@ services:
     ports:
       - "9878:9878"
     environment:
-      OZONE_OM_SERVICE_IDS: ozone1
-      OZONE_OM_NODE_ID: om1
+      OZONE_SCM_NAMES: ozone-scm
       OZONE_OM_ADDRESS: ozone-om
     depends_on: [ ozone-scm ]
     networks: [ ozone-net ]
@@ -28,7 +26,8 @@ services:
     container_name: ozone-datanode
     command: [ "ozone", "datanode" ]
     environment:
-      OZONE_SCM_IP: ozone-scm
+      OZONE_SCM_NAMES: ozone-scm
+      OZONE_OM_ADDRESS: ozone-om
     depends_on: [ ozone-scm ]
     networks: [ ozone-net ]
 
@@ -39,7 +38,7 @@ services:
     ports:
       - "9862:9862"
     environment:
-      OZONE_OM_SERVICE_IDS: ozone1
+      OZONE_SCM_NAMES: ozone-scm
       OZONE_OM_ADDRESS: ozone-om
     depends_on: [ ozone-om ]
     networks: [ ozone-net ]
