@@ -11,7 +11,7 @@ services:
       - 9876:9876
     environment:
       OZONE_OM_SERVICE_IDS: ozone1
-    command: ["ozone", "scm"]
+    command: [ "ozone", "scm" ]
     networks:
       - lake-net
 
@@ -25,7 +25,7 @@ services:
       OZONE_OM_SERVICE_IDS: ozone1
       OZONE_OM_NODE_ID: om1
       OZONE_OM_ADDRESS: ozone-om
-    command: ["ozone", "om"]
+    command: [ "ozone", "om" ]
     depends_on:
       - ozone-scm
     networks:
@@ -39,7 +39,7 @@ services:
       - ozone-om
     environment:
       OZONE_SCM_IP: ozone-scm
-    command: ["ozone", "datanode"]
+    command: [ "ozone", "datanode" ]
     networks:
       - lake-net
 
@@ -91,7 +91,7 @@ services:
   # Spark (Processing Engine)
   # ---------------------------
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.0
     container_name: spark-master
     environment:
       - SPARK_MODE=master
@@ -102,7 +102,7 @@ services:
       - lake-net
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.0
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
@@ -116,7 +116,7 @@ services:
   # Backend API (Control Plane)
   # ---------------------------
   lake-api:
-    build: 
+    build:
       context: ./api
       dockerfile: Dockerfile
     container_name: lake-api
