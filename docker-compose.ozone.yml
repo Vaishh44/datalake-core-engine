@@ -7,18 +7,21 @@ services:
     hostname: ozone-all-in-one
     ports:
       - "9874:9874" # OM UI
-      - "9878:9878" # S3 Gateway
+      - "9878:9862" # S3 Gateway (Host:9878 -> Container:9862)
     environment:
+      # Network Binding
       OZONE_OM_ADDRESS: 0.0.0.0
       OZONE_OM_HTTP_BIND_HOST: 0.0.0.0
       OZONE_S3G_HTTP_BIND_HOST: 0.0.0.0
 
+      # Internal Discovery
       OZONE_SCM_NAMES: localhost
       OZONE_SCM_CLIENT_BIND_HOST: 0.0.0.0
       OZONE_SCM_BLOCK_CLIENT_BIND_HOST: 0.0.0.0
       OZONE_SCM_DATANODE_ID: localhost
       OZONE_DATANODE_ADDRESS: localhost
 
+      # Config
       OZONE_REPLICATION: 1
       OZONE_METADATA_DIRS: /data/metadata
     volumes:
@@ -28,10 +31,10 @@ services:
       - "-c"
       - |
         echo "------------------------------------------------"
-        echo "   OZONE ALL-IN-ONE STARTUP SCRIPT              "
+        echo "   OZONE ROBUST STARTUP (STRICT MODE)           "
         echo "------------------------------------------------"
 
-        # 1. Initialize SCM if needed
+        # 1. Initialize SCM configuration
         if [ ! -f /data/metadata/scm/current/VERSION ]; then
            echo "[INIT] Initializing SCM..."
            ozone scm --init
@@ -39,7 +42,7 @@ services:
            echo "[INIT] SCM already initialized."
         fi
 
-        # 2. Initialize OM if needed
+        # 2. Initialize OM configuration
         if [ ! -f /data/metadata/om/current/VERSION ]; then
            echo "[INIT] Initializing OM..."
            ozone om --init
@@ -47,30 +50,37 @@ services:
            echo "[INIT] OM already initialized."
         fi
 
-        # 3. Start Core Services
-        echo "[START] Starting SCM..."
-        ozone scm --daemon start
+        echo "------------------------------------------------"
+        echo "   STARTING DAEMONS SEQUENTIALLY...             "
+        echo "------------------------------------------------"
 
-        echo "[START] Starting OM..."
-        ozone om --daemon start
+        # 3. Start SCM
+        echo "[START] Storage Container Manager..."
+        ozone --daemon start scm
+        sleep 10
 
-        echo "[START] Starting Datanode..."
-        ozone datanode --daemon start
+        # 4. Start OM
+        echo "[START] Ozone Manager..."
+        ozone --daemon start om
+        sleep 10
 
-        # 4. Wait for OM to be Ready
-        echo "[WAIT] Waiting for Ozone Manager..."
-        until ozone sh volume list / > /dev/null 2>&1; do
-          echo "   ... waiting for OM ..."
-          sleep 5
-        done
-        echo "[READY] OM is online!"
-
-
+        # 5. Start Datanode
+        echo "[START] Datanode..."
+        ozone --daemon start datanode
+        sleep 10
 
         # 6. Start S3 Gateway
-        echo "[START] Starting S3 Gateway..."
-        ozone s3g --daemon start
+        echo "[START] S3 Gateway..."
+        ozone --daemon start s3g
+        sleep 5
 
-        # 7. Keep Alive
-        echo "[DONE] All services started. Keeping container alive."
+        # 7. Verification inside container
+        echo "------------------------------------------------"
+        echo "   RUNNING PROCESSES (JPS)                      "
+        echo "------------------------------------------------"
+        jps
+
+        echo "------------------------------------------------"
+        echo "   CONTAINER READY - KEEPING ALIVE              "
+        echo "------------------------------------------------"
         tail -f /dev/null

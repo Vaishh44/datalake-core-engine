@@ -2,9 +2,7 @@ import boto3
 import sys
 import time
 from botocore.config import Config
-from botocore import UNSIGNED
 
-# Configuration
 # Configuration
 OZONE_ENDPOINT = "http://localhost:9878"
 BUCKET_NAME = "s3v.phase1-test"
@@ -42,15 +40,12 @@ def main():
             bucket_ready = True
             break
         except Exception as e:
-            # If connection failed, we retry. If bucket exists, we proceed.
             msg = str(e)
-            if "Connection refused" in msg or "EndpointConnectionError" in msg or "ClientError" not in msg:
-                 # Assume these are transient startup issues
-                 print(f"   ⏳ Attempt {i+1}/{retries}: Connection failing or retrying... ({msg})")
+            if "Connection refused" in msg or "EndpointConnectionError" in msg or "500" in msg:
+                 print(f"   ⏳ Attempt {i+1}/{retries}: Connection failing (Server 500 or Refused)... ({msg})")
                  time.sleep(5)
             else:
-                 # Likely "BucketAlreadyExists" or similar
-                 print(f"   ℹ️ Bucket may already exist: {msg}")
+                 print(f"   ℹ️ Bucket may already exist or other error: {msg}")
                  bucket_ready = True
                  break
 
