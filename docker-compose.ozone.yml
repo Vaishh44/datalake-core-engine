@@ -7,18 +7,10 @@ services:
     hostname: ozone-all-in-one
     ports:
       - "9874:9874" # OM UI
-      - "9878:9878" # S3 Gateway (Standard)
-      - "9862:9862" # S3 Gateway (Alternative)
     environment:
       # Network Binding
       OZONE_OM_ADDRESS: 0.0.0.0
       OZONE_OM_HTTP_BIND_HOST: 0.0.0.0
-      OZONE_S3G_HTTP_BIND_HOST: 0.0.0.0
-
-      # 🔑 IMPORTANT FIX: Dev Mode (No Auth)
-      OZONE_S3G_AUTHENTICATION_TYPE: SIMPLE
-      OZONE_S3G_AUTHENTICATION_ENABLED: "false"
-      OZONE_S3G_HTTP_ENABLED: "true"
 
       # Internal Discovery
       OZONE_SCM_NAMES: localhost
@@ -42,7 +34,7 @@ services:
       - "-c"
       - |
         echo "------------------------------------------------"
-        echo "   OZONE ROBUST STARTUP (STRICT MODE)           "
+        echo "   OZONE NATIVE STORAGE STARTUP                 "
         echo "------------------------------------------------"
 
         # 1. Initialize SCM configuration
@@ -62,7 +54,7 @@ services:
         fi
 
         echo "------------------------------------------------"
-        echo "   STARTING DAEMONS SEQUENTIALLY...             "
+        echo "   STARTING CORE DAEMONS ONLY                   "
         echo "------------------------------------------------"
 
         # 3. Start SCM
@@ -80,12 +72,9 @@ services:
         ozone --daemon start datanode
         sleep 10
 
-        # 6. Start S3 Gateway
-        echo "[START] S3 Gateway..."
-        ozone --daemon start s3g
-        sleep 5
+        # Note: S3 Gateway is explicitly NOT started for this phase.
 
-        # 7. Verification inside container
+        # 6. Verification inside container
         echo "------------------------------------------------"
         echo "   RUNNING PROCESSES (JPS)                      "
         echo "------------------------------------------------"
