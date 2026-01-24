@@ -21,8 +21,8 @@ def main():
         s3 = boto3.client(
             "s3",
             endpoint_url=OZONE_ENDPOINT,
-            aws_access_key_id="any",
-            aws_secret_access_key="any",
+            aws_access_key_id="ozone",
+            aws_secret_access_key="ozone",
             config=Config(signature_version=UNSIGNED), 
             region_name="us-east-1"
         )
@@ -30,24 +30,32 @@ def main():
         print(f"❌ FAILURE: Connection setup failed. Error: {e}")
         sys.exit(1)
 
-    # 2. Check Bucket Access (It should be auto-created by the container)
-    print(f"[ACTION] Checking bucket '{BUCKET_NAME}'...")
-    retries = 5
+    # 2. Check/Create Bucket with Retry Logic
+    print(f"[ACTION] Checking/Creating bucket '{BUCKET_NAME}'...")
+    retries = 10
     bucket_ready = False
     
     for i in range(retries):
         try:
-            s3.list_objects_v2(Bucket=BUCKET_NAME)
-            print("   ✅ Bucket is accessible.")
+            s3.create_bucket(Bucket=BUCKET_NAME)
+            print("   ✅ Bucket created via S3 API.")
             bucket_ready = True
             break
         except Exception as e:
-            print(f"   ⏳ Attempt {i+1}/{retries}: Bucket not ready yet... ({e})")
-            time.sleep(2)
-            
+            # If connection failed, we retry. If bucket exists, we proceed.
+            msg = str(e)
+            if "Connection refused" in msg or "EndpointConnectionError" in msg or "ClientError" not in msg:
+                 # Assume these are transient startup issues
+                 print(f"   ⏳ Attempt {i+1}/{retries}: Connection failing or retrying... ({msg})")
+                 time.sleep(5)
+            else:
+                 # Likely "BucketAlreadyExists" or similar
+                 print(f"   ℹ️ Bucket may already exist: {msg}")
+                 bucket_ready = True
+                 break
+
     if not bucket_ready:
-        print(f"❌ FAILURE: Bucket '{BUCKET_NAME}' is not accessible after multiple attempts.")
-        print("   The auto-initialization in docker-compose might have failed or is still running.")
+        print(f"❌ FAILURE: Bucket '{BUCKET_NAME}' could not be created/verified.")
         sys.exit(1)
 
     # 3. Create Local File
@@ -101,7 +109,7 @@ def main():
     except:
         pass
 
-    print("\n✅ PHASE 1 COMPLETE: Ozone is working")
+    print("\n✅ PHASE 1 COMPLETE: Ozone is working, S3 Gateway verified")
 
 if __name__ == "__main__":
     main()

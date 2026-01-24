@@ -2,80 +2,75 @@ version: "3.8"
 
 services:
   ozone-all-in-one:
-    # Use 1.3.0 as requested
-    # Use 1.4.1 as you are currently running
-    image: apache/ozone:1.4.1
+    image: apache/ozone:1.3.0
     container_name: ozone-all-in-one
     hostname: ozone-all-in-one
-    # We expose all needed ports from this single container
     ports:
       - "9874:9874" # OM UI
-      - "9876:9876" # SCM UI
       - "9862:9862" # S3 Gateway
     environment:
-      # These configs ensure all components look at THIS container
-      # CRITICAL: Bind to 0.0.0.0 so they are visible outside the container
       OZONE_OM_ADDRESS: 0.0.0.0
       OZONE_OM_HTTP_BIND_HOST: 0.0.0.0
       OZONE_S3G_HTTP_BIND_HOST: 0.0.0.0
 
-      # Internal communication can use localhost since it's all-in-one
       OZONE_SCM_NAMES: localhost
       OZONE_SCM_CLIENT_BIND_HOST: 0.0.0.0
       OZONE_SCM_BLOCK_CLIENT_BIND_HOST: 0.0.0.0
       OZONE_SCM_DATANODE_ID: localhost
       OZONE_DATANODE_ADDRESS: localhost
 
-      # Single node replication settings
       OZONE_REPLICATION: 1
       OZONE_METADATA_DIRS: /data/metadata
-
-    # Persistence
     volumes:
       - ./ozone-data:/data
-
-    # The Magic Script: Init & Start EVERYTHING
     command:
       - "/bin/bash"
       - "-c"
       - |
-        echo "STARTING OZONE ALL-IN-ONE..."
+        echo "------------------------------------------------"
+        echo "   OZONE ALL-IN-ONE STARTUP SCRIPT              "
+        echo "------------------------------------------------"
 
-        # 1. Init SCM and OM
+        # 1. Initialize SCM if needed
         if [ ! -f /data/metadata/scm/current/VERSION ]; then
-           echo "Initializing SCM..."
+           echo "[INIT] Initializing SCM..."
            ozone scm --init
-        fi
-        if [ ! -f /data/metadata/om/current/VERSION ]; then
-           echo "Initializing OM..."
-           ozone om --init
+        else
+           echo "[INIT] SCM already initialized."
         fi
 
-        # 2. Start Services in Background
-        echo "Starting SCM..."
+        # 2. Initialize OM if needed
+        if [ ! -f /data/metadata/om/current/VERSION ]; then
+           echo "[INIT] Initializing OM..."
+           ozone om --init
+        else
+           echo "[INIT] OM already initialized."
+        fi
+
+        # 3. Start Core Services
+        echo "[START] Starting SCM..."
         ozone scm --daemon start
 
-        echo "Starting OM..."
+        echo "[START] Starting OM..."
         ozone om --daemon start
 
-        echo "Starting Datanode..."
+        echo "[START] Starting Datanode..."
         ozone datanode --daemon start
 
-        # 3. Wait for OM to be ready
-        echo "Waiting for Ozone Manager to be ready..."
+        # 4. Wait for OM to be Ready
+        echo "[WAIT] Waiting for Ozone Manager..."
         until ozone sh volume list / > /dev/null 2>&1; do
-          echo "Waiting for OM..."
+          echo "   ... waiting for OM ..."
           sleep 5
         done
-        echo "OM is Ready!"
+        echo "[READY] OM is online!"
 
-        # 4. Auto-Create S3 Volume and Bucket (Idempotent)
-        echo "Creating S3 Volume 's3v'..."
-        ozone sh volume create s3v || echo "Volume s3v might already exist"
 
-        echo "Creating Bucket 's3v/phase1-test'..."
-        ozone sh bucket create s3v/phase1-test || echo "Bucket might already exist"
 
-        # 5. Start S3 Gateway in Foreground (keeps container alive)
-        echo "Starting S3 Gateway..."
-        ozone s3g
+        # 6. Start S3 Gateway
+        echo "[START] Starting S3 Gateway..."
+        ozone s3g --daemon start
+
+        # 7. Keep Alive
+        echo "[DONE] All services started. Keeping container alive."
+        tail -f /dev/null
