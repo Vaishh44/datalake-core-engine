@@ -3,7 +3,8 @@ version: "3.8"
 services:
   ozone-all-in-one:
     # Use 1.3.0 as requested
-    image: apache/ozone:1.3.0
+    # Use 1.4.1 as you are currently running
+    image: apache/ozone:1.4.1
     container_name: ozone-all-in-one
     hostname: ozone-all-in-one
     # We expose all needed ports from this single container
@@ -13,7 +14,12 @@ services:
       - "9862:9862" # S3 Gateway
     environment:
       # These configs ensure all components look at THIS container
-      OZONE_OM_ADDRESS: localhost
+      # CRITICAL: Bind to 0.0.0.0 so they are visible outside the container
+      OZONE_OM_ADDRESS: 0.0.0.0
+      OZONE_OM_HTTP_BIND_HOST: 0.0.0.0
+      OZONE_S3G_HTTP_BIND_HOST: 0.0.0.0
+
+      # Internal communication can use localhost since it's all-in-one
       OZONE_SCM_NAMES: localhost
       OZONE_SCM_CLIENT_BIND_HOST: 0.0.0.0
       OZONE_SCM_BLOCK_CLIENT_BIND_HOST: 0.0.0.0
