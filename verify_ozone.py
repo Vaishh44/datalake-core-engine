@@ -5,8 +5,9 @@ from botocore.config import Config
 from botocore import UNSIGNED
 
 # Configuration
+# Configuration
 OZONE_ENDPOINT = "http://localhost:9878"
-BUCKET_NAME = "phase1-test"
+BUCKET_NAME = "s3v.phase1-test"
 FILE_NAME = "ozone_test.txt"
 DOWNLOAD_FILE_NAME = "downloaded_ozone_test.txt"
 
@@ -23,7 +24,6 @@ def main():
             endpoint_url=OZONE_ENDPOINT,
             aws_access_key_id="ozone",
             aws_secret_access_key="ozone",
-            config=Config(signature_version=UNSIGNED), 
             region_name="us-east-1"
         )
     except Exception as e:
