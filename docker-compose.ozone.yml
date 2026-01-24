@@ -28,8 +28,13 @@ services:
       OZONE_DATANODE_ADDRESS: localhost
 
       # Config
-      OZONE_REPLICATION: 1
       OZONE_METADATA_DIRS: /data/metadata
+
+      # ⚠️ STRICT SINGLE NODE REPLICATION
+      OZONE_REPLICATION: "1"
+      OZONE_SCM_REPLICATION_FACTOR: "1"
+      OZONE_SCM_PIPELINE_OWNER_CONTAINER_COUNT: "1"
+      OZONE_SCM_CONTAINER_PLACEMENT_IMPL: org.apache.hadoop.hdds.scm.container.placement.algorithms.SimpleContainerPlacementPolicy
     volumes:
       - ./ozone-data:/data
     command:
