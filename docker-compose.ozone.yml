@@ -7,12 +7,18 @@ services:
     hostname: ozone-all-in-one
     ports:
       - "9874:9874" # OM UI
-      - "9878:9862" # S3 Gateway (Host:9878 -> Container:9862)
+      - "9878:9878" # S3 Gateway (Standard)
+      - "9862:9862" # S3 Gateway (Alternative)
     environment:
       # Network Binding
       OZONE_OM_ADDRESS: 0.0.0.0
       OZONE_OM_HTTP_BIND_HOST: 0.0.0.0
       OZONE_S3G_HTTP_BIND_HOST: 0.0.0.0
+
+      # 🔑 IMPORTANT FIX: Dev Mode (No Auth)
+      OZONE_S3G_AUTHENTICATION_TYPE: SIMPLE
+      OZONE_S3G_AUTHENTICATION_ENABLED: "false"
+      OZONE_S3G_HTTP_ENABLED: "true"
 
       # Internal Discovery
       OZONE_SCM_NAMES: localhost
