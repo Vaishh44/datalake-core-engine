@@ -33,24 +33,24 @@ def main():
     retries = 10
     bucket_ready = False
     
-    for i in range(retries):
+    for i in range(10):
         try:
-            s3.create_bucket(Bucket=BUCKET_NAME)
-            print("   ✅ Bucket created via S3 API.")
+            s3.list_objects_v2(Bucket=BUCKET_NAME)
+            print("   ✅ Bucket already exists and is accessible.")
             bucket_ready = True
             break
-        except Exception as e:
-            msg = str(e)
-            if "Connection refused" in msg or "EndpointConnectionError" in msg or "500" in msg:
-                 print(f"   ⏳ Attempt {i+1}/{retries}: Connection failing (Server 500 or Refused)... ({msg})")
-                 time.sleep(5)
-            else:
-                 print(f"   ℹ️ Bucket may already exist or other error: {msg}")
-                 bucket_ready = True
-                 break
+        except Exception:
+            try:
+                s3.create_bucket(Bucket=BUCKET_NAME)
+                print("   ✅ Bucket created.")
+                bucket_ready = True
+                break
+            except Exception as e:
+                print(f"   ⏳ Waiting for bucket... ({e})")
+                time.sleep(3)
 
     if not bucket_ready:
-        print(f"❌ FAILURE: Bucket '{BUCKET_NAME}' could not be created/verified.")
+        print("❌ FAILURE: Bucket not accessible")
         sys.exit(1)
 
     # 3. Create Local File
