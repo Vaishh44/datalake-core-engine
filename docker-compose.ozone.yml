@@ -7,7 +7,7 @@ services:
     hostname: ozone-all-in-one
     ports:
       - "9874:9874" # OM UI
-      - "9862:9862" # S3 Gateway
+      - "9878:9878" # S3 Gateway
     environment:
       OZONE_OM_ADDRESS: 0.0.0.0
       OZONE_OM_HTTP_BIND_HOST: 0.0.0.0

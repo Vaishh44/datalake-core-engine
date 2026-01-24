@@ -5,7 +5,7 @@ from botocore.config import Config
 from botocore import UNSIGNED
 
 # Configuration
-OZONE_ENDPOINT = "http://localhost:9862"
+OZONE_ENDPOINT = "http://localhost:9878"
 BUCKET_NAME = "phase1-test"
 FILE_NAME = "ozone_test.txt"
 DOWNLOAD_FILE_NAME = "downloaded_ozone_test.txt"
