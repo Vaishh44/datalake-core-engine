@@ -3,7 +3,6 @@ import os
 
 def main():
     # Initialize Spark Session
-    # Note: Configuration for Ozone is passed via spark-submit in run_spark.sh
     spark = SparkSession.builder \
         .appName("OzoneBatchProcess") \
         .getOrCreate()
@@ -11,7 +10,8 @@ def main():
     print(">>> Spark Session Created")
 
     # Access parameters
-    ozone_om_address = "ozone:9862"
+    # Note: We use specific hostname 'ozone-om' as defined in docker-compose
+    ozone_om_address = "ozone-om:9862"
     bucket_path = f"ofs://{ozone_om_address}/datalake"
 
     # Define paths

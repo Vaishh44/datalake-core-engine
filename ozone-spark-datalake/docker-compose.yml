@@ -1,37 +1,83 @@
 version: "3"
 
 services:
-  ozone:
+  # ---------------------------
+  # Storage Container Manager
+  # ---------------------------
+  ozone-scm:
     image: apache/ozone:1.3.0
-    container_name: ozone
-    hostname: ozone
+    container_name: ozone-scm
+    hostname: ozone-scm
+    command: [ "ozone", "scm" ]
     environment:
-      OZONE_REPLICATION: 1
-    ports:
-      - "9874:9874" # SCM UI
-      - "9862:9862" # OM RPC
+      OZONE_MG_NAME: ozone-id
     networks:
       - lake_net
     volumes:
-      # We mount a shared volume to expose the Ozone filesystem jar to Spark
+      - ./data_dirs/scm:/data
+
+  # ---------------------------
+  # Ozone Manager
+  # ---------------------------
+  ozone-om:
+    image: apache/ozone:1.3.0
+    container_name: ozone-om
+    hostname: ozone-om
+    command: [ "ozone", "om" ]
+    ports:
+      - "9874:9874" # OM UI
+      - "9862:9862" # OM RPC
+    environment:
+      OZONE_SCM_NAMES: ozone-scm
+      OZONE_OM_ADDRESS: ozone-om
+      OZONE_OM_SERVICE_IDS: ozone-id
+    depends_on:
+      - ozone-scm
+    networks:
+      - lake_net
+    volumes:
+      - ./data_dirs/om:/data
+
+  # ---------------------------
+  # DataNode
+  # ---------------------------
+  ozone-datanode:
+    image: apache/ozone:1.3.0
+    container_name: ozone-datanode
+    hostname: ozone-datanode
+    command: [ "ozone", "datanode" ]
+    environment:
+      OZONE_SCM_NAMES: ozone-scm
+      OZONE_OM_ADDRESS: ozone-om
+    depends_on:
+      - ozone-scm
+      - ozone-om
+    networks:
+      - lake_net
+    volumes:
+      - ./data_dirs/datanode:/data
+      # Share generic libs so Spark can access the jar
       - ozone_libs:/opt/hadoop/share/ozone/lib
 
+  # ---------------------------
+  # Apache Spark
+  # ---------------------------
   spark:
-    image: bitnami/spark:3.5
+    image: apache/spark:3.4.2
     container_name: spark
     hostname: spark
-    user: root # Run as root to avoid permission issues with mounted volumes if needed
+    user: root
     depends_on:
-      - ozone
+      - ozone-om
+      - ozone-datanode
     networks:
       - lake_net
     volumes:
       - ./spark:/app
-      # Mount the volume populated by Ozone container
       - ozone_libs:/opt/ozone-libs
     environment:
-      # Ensure Spark logs are readable
       SPARK_LOG_LEVEL: INFO
+    command: [ "sleep", "infinity" ]
 
 networks:
   lake_net:
