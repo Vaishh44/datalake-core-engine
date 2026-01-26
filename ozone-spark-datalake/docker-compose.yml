@@ -8,27 +8,29 @@ services:
     environment:
       OZONE_REPLICATION: 1
     ports:
-      - "9874:9874"
-      - "9862:9862"
+      - "9874:9874" # SCM UI
+      - "9862:9862" # OM RPC
     networks:
       - lake_net
     volumes:
-      - ozone_libs:/opt/ozone/share/ozone/lib
-    command: ozone ozone all-in-one
+      # We mount a shared volume to expose the Ozone filesystem jar to Spark
+      - ozone_libs:/opt/hadoop/share/ozone/lib
 
   spark:
     image: bitnami/spark:3.5
     container_name: spark
     hostname: spark
-    user: root
+    user: root # Run as root to avoid permission issues with mounted volumes if needed
     depends_on:
       - ozone
     networks:
       - lake_net
     volumes:
       - ./spark:/app
+      # Mount the volume populated by Ozone container
       - ozone_libs:/opt/ozone-libs
     environment:
+      # Ensure Spark logs are readable
       SPARK_LOG_LEVEL: INFO
 
 networks:
